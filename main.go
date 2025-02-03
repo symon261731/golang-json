@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gorilla/mux"
 	"log"
 	"main/package/types"
@@ -70,9 +71,52 @@ func main() {
 			}
 
 		}
-		r.HandleFunc("/{user_id}", func(writer http.ResponseWriter, request *http.Request) {
+	})
+	r.HandleFunc("/{user_id}", func(writer http.ResponseWriter, request *http.Request) {
 
-		})
+		if request.Method != "PUT" {
+			http.Error(writer, "invalid request", http.StatusNotFound)
+			return
+		}
+
+		vars := mux.Vars(request)
+		userId := vars["user_id"]
+
+		var bodyData types.PutNewAgeJson
+
+		parseBodyErr := json.NewDecoder(request.Body).Decode(&bodyData)
+		if parseBodyErr != nil {
+			log.Println("Произошла ошибка при парсинге body")
+			log.Println(parseBodyErr)
+		}
+
+		newAge, errPrepareAge := strconv.Atoi(bodyData.NewAge)
+		if errPrepareAge != nil {
+			log.Println("Произошла ошибка при парсинге возраста из body")
+			log.Println(errPrepareAge)
+		}
+
+		mockJsonData, err := os.ReadFile("mockDB/mockDB.json")
+		if err != nil {
+			log.Println("Произошла ошибка при чтении json")
+			log.Println(err)
+		}
+
+		var users types.UserListMap
+		marshalError := json.Unmarshal(mockJsonData, &users)
+		if marshalError != nil {
+			log.Println("Произошла ошибка при парсинге json")
+			log.Println(marshalError)
+		}
+		// TODO Не работает
+		if entry, ok := users[userId]; ok {
+			fmt.Println(users[userId])
+			fmt.Println(newAge)
+			entry.Age = newAge
+		}
+
+		log.Println(users)
+
 	})
 
 	log.Printf("Веб-сервер запущен на http://127.0.0.1%s", PORT)

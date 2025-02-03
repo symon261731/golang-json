@@ -18,3 +18,7 @@ type UserFriends struct {
 	Id   int    `json:"id"`
 	Name string `json:"name"`
 }
+
+type PutNewAgeJson struct {
+	NewAge string `json:"new age"`
+}
