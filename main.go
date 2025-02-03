@@ -29,12 +29,6 @@ func main() {
 	})
 	r.HandleFunc("/create", func(writer http.ResponseWriter, request *http.Request) {
 		if request.Method == "POST" {
-			jsonData, err := os.ReadFile("mockDB/mockDB.json")
-
-			if err != nil {
-				log.Println("Произошла ошибка при чтении json")
-				log.Println(err)
-			}
 
 			var bodyData types.CreateUserData
 
@@ -42,6 +36,12 @@ func main() {
 			if parseBodyErr != nil {
 				log.Println("Произошла ошибка при парсинге body")
 				log.Println(parseBodyErr)
+			}
+
+			jsonData, err := os.ReadFile("mockDB/mockDB.json")
+			if err != nil {
+				log.Println("Произошла ошибка при чтении json")
+				log.Println(err)
 			}
 
 			var users types.UserListMap
@@ -53,32 +53,26 @@ func main() {
 			}
 
 			newId := len(users) + 1
-
 			newUser := types.User{Id: newId, Name: bodyData.Name, Age: bodyData.Age, Friends: make([]types.UserFriends, 0)}
 
-			//TODO вынести в отдельный алгоритм
-			var newUserMap = types.UserListMap{}
-			for s, user := range users {
-				newUserMap[s] = user
-			}
-			newUserMap[strconv.Itoa(newId)] = newUser
+			users[strconv.Itoa(newId)] = newUser
 
-			decodeUserMap, errMarshalJson := json.Marshal(newUserMap)
-
+			decodeUserMap, errMarshalJson := json.Marshal(users)
 			if errMarshalJson != nil {
 				log.Println("Произошла ошибка при шифровании json")
 				log.Println(err)
-				return
 			}
 
 			errWriteFile := os.WriteFile("mockDB/mockDB.json", decodeUserMap, 0644)
-
 			if errWriteFile != nil {
 				log.Println("Произошла ошибка при записи новых данных")
 				log.Println(errWriteFile)
 			}
 
 		}
+		r.HandleFunc("/{user_id}", func(writer http.ResponseWriter, request *http.Request) {
+
+		})
 	})
 
 	log.Printf("Веб-сервер запущен на http://127.0.0.1%s", PORT)
