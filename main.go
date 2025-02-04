@@ -10,7 +10,7 @@ import (
 	"strconv"
 )
 
-var PORT = ":4000"
+var PORT = ":8080"
 
 func main() {
 	r := mux.NewRouter()
@@ -30,6 +30,93 @@ func main() {
 
 	})
 
+	r.HandleFunc("/make_friends", func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != "POST" {
+			http.Error(writer, "invalid make friends request", http.StatusNotFound)
+			return
+		}
+
+		var bodyData types.PostIdsFriends
+		errJsonDecode := json.NewDecoder(request.Body).Decode(&bodyData)
+
+		if errJsonDecode != nil {
+			log.Println("Произошла ошибка при парсинге body")
+			log.Println(errJsonDecode)
+
+			return
+		}
+
+		mockJsonData, err := os.ReadFile("mockDB/mockDB.json")
+		if err != nil {
+			log.Println("Произошла ошибка при чтении json")
+			log.Println(err)
+
+			return
+		}
+
+		var users types.UserListMap
+		marshalError := json.Unmarshal(mockJsonData, &users)
+
+		if marshalError != nil {
+			log.Println("Произошла ошибка при парсинге json файла")
+			log.Println(err)
+
+			return
+		}
+
+		var (
+			sourceUser types.User
+			targetUser types.User
+		)
+
+		if entry, ok := users[bodyData.Source_id]; ok {
+			sourceUser = entry
+		} else {
+			log.Println("Пользователь c таким source_id не существует")
+
+			return
+		}
+
+		if entry, ok := users[bodyData.Target_id]; ok {
+			targetUser = entry
+		} else {
+			log.Println("Пользователь c таким source_id не существует")
+
+			return
+		}
+
+		sourceUser.Friends = append(sourceUser.Friends, types.UserFriends{Id: targetUser.Id, Name: targetUser.Name})
+		targetUser.Friends = append(targetUser.Friends, types.UserFriends{Id: sourceUser.Id, Name: sourceUser.Name})
+
+		log.Println(sourceUser)
+		log.Println(targetUser)
+
+		users[bodyData.Source_id] = sourceUser
+		users[bodyData.Target_id] = targetUser
+
+		byteDbData, errByteDbData := json.Marshal(users)
+
+		if errByteDbData != nil {
+			log.Println("Произошла ошибка при шифровании json")
+			log.Println(err)
+
+			return
+		}
+
+		errorWriteFile := os.WriteFile("mockDB/mockDB.json", byteDbData, 0644)
+
+		if errorWriteFile != nil {
+			log.Println("Произошла ошибка при записи в файл")
+			log.Println(errorWriteFile)
+
+			return
+		}
+
+		writer.WriteHeader(http.StatusOK)
+		writer.Write([]byte("Пользователи стали друзьями"))
+
+	})
+
 	r.HandleFunc("/create", func(writer http.ResponseWriter, request *http.Request) {
 		if request.Method != "POST" {
 			http.Error(writer, "invalid create request", http.StatusNotFound)
@@ -42,12 +129,16 @@ func main() {
 		if parseBodyErr != nil {
 			log.Println("Произошла ошибка при парсинге body")
 			log.Println(parseBodyErr)
+
+			return
 		}
 
 		jsonData, err := os.ReadFile("mockDB/mockDB.json")
 		if err != nil {
 			log.Println("Произошла ошибка при чтении json")
 			log.Println(err)
+
+			return
 		}
 
 		var users types.UserListMap
@@ -56,6 +147,8 @@ func main() {
 		if errParseJson != nil {
 			log.Println("Произошла ошибка при парсинге json")
 			log.Println(errParseJson)
+
+			return
 		}
 
 		newId := len(users) + 1
@@ -67,13 +160,21 @@ func main() {
 		if errMarshalJson != nil {
 			log.Println("Произошла ошибка при шифровании json")
 			log.Println(err)
+
+			return
 		}
 
 		errWriteFile := os.WriteFile("mockDB/mockDB.json", decodeUserMap, 0644)
 		if errWriteFile != nil {
 			log.Println("Произошла ошибка при записи новых данных")
 			log.Println(errWriteFile)
+
+			return
 		}
+
+	})
+
+	r.HandleFunc("/friends/{id}", func(writer http.ResponseWriter, request *http.Request) {
 
 	})
 
@@ -93,18 +194,24 @@ func main() {
 		if parseBodyErr != nil {
 			log.Println("Произошла ошибка при парсинге body")
 			log.Println(parseBodyErr)
+
+			return
 		}
 
 		newAge, errPrepareAge := strconv.Atoi(bodyData.NewAge)
 		if errPrepareAge != nil {
 			log.Println("Произошла ошибка при парсинге возраста из body")
 			log.Println(errPrepareAge)
+
+			return
 		}
 
 		mockJsonData, err := os.ReadFile("mockDB/mockDB.json")
 		if err != nil {
 			log.Println("Произошла ошибка при чтении json")
 			log.Println(err)
+
+			return
 		}
 
 		var users types.UserListMap
@@ -112,6 +219,8 @@ func main() {
 		if marshalError != nil {
 			log.Println("Произошла ошибка при парсинге json")
 			log.Println(marshalError)
+
+			return
 		}
 
 		var neededUser types.User
@@ -128,6 +237,8 @@ func main() {
 		if marshalError != nil {
 			log.Println("Произошла ошибки при marshal json")
 			log.Println(marshalError)
+
+			return
 		}
 
 		errorWriteFile := os.WriteFile("mockDB/mockDB.json", decodeUserMap, 0644)
@@ -135,63 +246,9 @@ func main() {
 		if errorWriteFile != nil {
 			log.Println("Произошла ошибка при записи в файл")
 			log.Println(errorWriteFile)
-		}
 
-	})
-
-	r.HandleFunc("/make_friends", func(writer http.ResponseWriter, request *http.Request) {
-		if request.Method != "POST" {
-			http.Error(writer, "invalid make friends request", http.StatusNotFound)
 			return
 		}
-
-		var bodyData types.PostIdsFriends
-		errJsonDecode := json.NewDecoder(request.Body).Decode(&bodyData)
-
-		if errJsonDecode != nil {
-			log.Println("Произошла ошибка при парсинге body")
-			log.Println(errJsonDecode)
-		}
-
-		mockJsonData, err := os.ReadFile("mockDB/mockDB.json")
-		if err != nil {
-			log.Println("Произошла ошибка при чтении json")
-			log.Println(err)
-		}
-
-		var users types.UserListMap
-		marshalError := json.Unmarshal(mockJsonData, &users)
-
-		if marshalError != nil {
-			log.Println("Произошла ошибка при парсинге json файла")
-			log.Println(err)
-		}
-
-		var (
-			sourceUser types.User
-			targetUser types.User
-		)
-
-		if entry, ok := users[bodyData.Source_id]; ok {
-			sourceUser = entry
-		} else {
-			log.Println("Пользователь c таким source_id не существует")
-		}
-
-		if entry, ok := users[bodyData.Target_id]; ok {
-			targetUser = entry
-		} else {
-			log.Println("Пользователь c таким source_id не существует")
-		}
-
-		sourceUser.Friends = append(sourceUser.Friends, types.UserFriends{Id: targetUser.Id, Name: targetUser.Name})
-		targetUser.Friends = append(targetUser.Friends, types.UserFriends{Id: sourceUser.Id, Name: sourceUser.Name})
-
-		log.Println(sourceUser)
-		log.Println(targetUser)
-
-		writer.WriteHeader(http.StatusOK)
-		writer.Write([]byte("Пользователи стали друзьями"))
 
 	})
 
