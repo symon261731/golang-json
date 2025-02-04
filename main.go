@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/mux"
 	"log"
 	"main/package/types"
@@ -108,14 +107,29 @@ func main() {
 			log.Println("Произошла ошибка при парсинге json")
 			log.Println(marshalError)
 		}
+
+		var neededUser types.User
 		// TODO Не работает
 		if entry, ok := users[userId]; ok {
-			fmt.Println(users[userId])
-			fmt.Println(newAge)
-			entry.Age = newAge
+			neededUser = entry
 		}
 
-		log.Println(users)
+		neededUser.Age = newAge
+		users[userId] = neededUser
+
+		decodeUserMap, marshalError := json.Marshal(users)
+
+		if marshalError != nil {
+			log.Println("Произошла ошибки при marshal json")
+			log.Println(marshalError)
+		}
+
+		errorWriteFile := os.WriteFile("mockDB/mockDB.json", decodeUserMap, 0644)
+
+		if errorWriteFile != nil {
+			log.Println("Произошла ошибка при записи в файл")
+			log.Println(errorWriteFile)
+		}
 
 	})
 
