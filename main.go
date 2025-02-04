@@ -11,6 +11,7 @@ import (
 )
 
 var PORT = ":8080"
+var filePath = "mockDB/mockDB.json"
 
 func main() {
 	r := mux.NewRouter()
@@ -175,6 +176,37 @@ func main() {
 	})
 
 	r.HandleFunc("/friends/{id}", func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != "GET" {
+			http.Error(writer, "Invalid HTTP verb.", http.StatusBadRequest)
+			return
+		}
+
+		vars := mux.Vars(request)
+
+		id := vars["id"]
+
+		file, err := os.ReadFile(filePath)
+
+		if err != nil {
+			log.Println("Произошла ошибка при чтении файла")
+			log.Println(err)
+			return
+		}
+
+		var fileJsonData types.UserListMap
+		unmarshallErr := json.Unmarshal(file, &fileJsonData)
+
+		if unmarshallErr != nil {
+			log.Println("Произошла ошибка при парсинге файла")
+			return
+		}
+
+		if entry, ok := fileJsonData[id]; ok {
+			log.Println(entry.Friends)
+		} else {
+			log.Println("Пользователя с таким id не существует")
+			return
+		}
 
 	})
 
