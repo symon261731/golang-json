@@ -132,6 +132,55 @@ func main() {
 		}
 
 	})
+	r.HandleFunc("/make_friends", func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != "POST" {
+			http.Error(writer, "invalid request", http.StatusNotFound)
+			return
+		}
+
+		var bodyData types.PostIdsFriends
+		errJsonDecode := json.NewDecoder(request.Body).Decode(&bodyData)
+
+		if errJsonDecode != nil {
+			log.Println("Произошла ошибка при парсинге body")
+			log.Println(errJsonDecode)
+		}
+
+		mockJsonData, err := os.ReadFile("mockDB/mockDB.json")
+		if err != nil {
+			log.Println("Произошла ошибка при чтении json")
+			log.Println(err)
+		}
+
+		var users types.UserListMap
+		marshalError := json.Unmarshal(mockJsonData, &users)
+
+		if marshalError != nil {
+			log.Println("Произошла ошибка при парсинге json файла")
+			log.Println(err)
+		}
+
+		var (
+			sourceUser types.User
+			targetUser types.User
+		)
+
+		if entry, ok := users[bodyData.Source_id]; ok {
+			sourceUser = entry
+		} else {
+			log.Println("Пользователь c таким source_id не существует")
+		}
+
+		if entry, ok := users[bodyData.Target_id]; ok {
+			targetUser = entry
+		} else {
+			log.Println("Пользователь c таким source_id не существует")
+		}
+
+		sourceUser.Friends = append(sourceUser.Friends, types.UserFriends{Id: targetUser.Id, Name: targetUser.Name})
+		targetUser.Friends = append(targetUser.Friends, types.UserFriends{Id: sourceUser.Id, Name: sourceUser.Name})
+
+	})
 
 	log.Printf("Веб-сервер запущен на http://127.0.0.1%s", PORT)
 	err := http.ListenAndServe(PORT, r)

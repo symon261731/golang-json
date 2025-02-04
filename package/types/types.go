@@ -22,3 +22,8 @@ type UserFriends struct {
 type PutNewAgeJson struct {
 	NewAge string `json:"new age"`
 }
+
+type PostIdsFriends struct {
+	Source_id string `json:"source_id"`
+	Target_id string `json:"target_id"`
+}
