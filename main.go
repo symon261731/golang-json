@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gorilla/mux"
 	"log"
 	"main/package/types"
+	"main/package/utils"
 	"net/http"
 	"os"
 	"strconv"
@@ -205,6 +207,79 @@ func main() {
 			log.Println(entry.Friends)
 		} else {
 			log.Println("Пользователя с таким id не существует")
+			return
+		}
+
+	})
+
+	r.HandleFunc("/user", func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != "DELETE" {
+			http.Error(writer, "need delete method", http.StatusNotFound)
+			return
+		}
+
+		params := request.URL.Query()
+		userForDeleteId := params["target_id"][0]
+		userForDeleteIdInt, errAtoiformat := strconv.Atoi(params["target_id"][0])
+
+		if errAtoiformat != nil {
+			log.Println(errAtoiformat)
+			return
+		}
+
+		file, err := os.ReadFile(filePath)
+
+		if err != nil {
+			log.Println("Произошла ошибка при чтении файла")
+			log.Println(err)
+			return
+		}
+
+		var fileJsonData types.UserListMap
+		unmarshallErr := json.Unmarshal(file, &fileJsonData)
+
+		if unmarshallErr != nil {
+			log.Println("Произошла ошибка при парсинге файла")
+			return
+		}
+
+		resultedFileJsonData := fileJsonData
+
+		//Очистка других пользователей от удаляемого пользователя
+		if userForDelete, ok := resultedFileJsonData[userForDeleteId]; ok {
+
+			for _, friend := range userForDelete.Friends {
+				log.Println(friend)
+				friendId := strconv.Itoa(friend.Id)
+				copiedFriend := fileJsonData[strconv.Itoa(friend.Id)]
+
+				filteredFriendsListOfFriend := utils.FilterSliceById(resultedFileJsonData[friendId].Friends, userForDeleteIdInt)
+
+				copiedFriend.Friends = filteredFriendsListOfFriend
+				resultedFileJsonData[friendId] = copiedFriend
+			}
+		} else {
+			log.Println("Пользователя с таким id не существует")
+			return
+		}
+
+		delete(resultedFileJsonData, userForDeleteId)
+
+		fmt.Println(resultedFileJsonData)
+
+		decodeUserMap, errMarshalJson := json.Marshal(resultedFileJsonData)
+		if errMarshalJson != nil {
+			log.Println("Произошла ошибка при шифровании json")
+			log.Println(err)
+
+			return
+		}
+
+		errWriteFile := os.WriteFile("mockDB/mockDB.json", decodeUserMap, 0644)
+		if errWriteFile != nil {
+			log.Println("Произошла ошибка при записи новых данных")
+			log.Println(errWriteFile)
+
 			return
 		}
 
